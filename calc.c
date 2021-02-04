@@ -8,7 +8,7 @@
 
 #define when(n) break; case n
 
-typedef double Num;
+typedef long int Num;
 typedef char* Str;
 typedef Num (*Op)(/*any args lol*/); //typedef Op
 typedef struct {Str name; Op func;} OpDef;
@@ -43,13 +43,24 @@ Op search(Str* str, OpDef* ops) {
 Num readExpr(Str*, int);
 
 Num readValue(Str* str, int depth) {
-	if ((*str)[0]>='0' && (*str)[0]<='9' || (*str)[0]=='.') {
+	//	if ((*str)[0]>='0' && (*str)[0]<='9' || (*str)[0]=='.') {
+	if ((*str)[0]>='0' && (*str)[0]<='9'
+		|| (*str)[0]=='b' || (*str)[0]=='x' || (*str)[0]=='o') {
 		Str end;
-		Num num = strtod(*str, &end);
+		Num num;
+		if((*str)[0]=='b') num = strtol(++(*str), &end, 2);
+		else if((*str)[0]=='o') num = strtol(++(*str), &end, 8);
+		else if((*str)[0]=='x') num = strtol(++(*str), &end, 16);
+		else num = strtol(*str, &end, 10);
 		if (end) {
 			*str = end;
 			return num;
 		}
+	}
+	if ((*str)[0]=='c') {
+		Num num = (long int)(char)(++(*str))[0];
+		(*str)++;
+		return num;
 	}
 	if ((*str)[0]=='a') {
 		(*str)++;
@@ -87,6 +98,44 @@ Num readExpr(Str* str, int depth) {
 	return readAfter(str, depth, acc);
 }
 
+/**
+ * C++ version 0.4 char* style "itoa":
+ * Written by Lukás Chmela
+ * Released under GPLv3.
+ */
+char* itoa(int value, char* result, int base) {
+	// check that the base if valid
+	if (base < 2 || base > 36) { *result = '\0'; return result; }
+	char* ptr = result, *ptr1 = result, tmp_char;
+	int tmp_value;
+	do {
+		tmp_value = value;
+		value /= base;
+		*ptr++ =
+		"zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"
+			[35 + (tmp_value - value * base)];
+	} while ( value );
+	// Apply negative sign
+	if (tmp_value < 0) *ptr++ = '-';
+	*ptr-- = '\0';
+	while(ptr1 < ptr) {
+		tmp_char = *ptr;
+		*ptr--= *ptr1;
+		*ptr1++ = tmp_char;
+	}
+	return result;
+}
+
+void display_result(Num res) {
+	char bin [33];
+	itoa (res,bin,2);
+	printf("b: %s\n", bin);
+	//printf("o: %o\n", res);
+	printf("d: %d\n", res);
+	printf("x: %x\n", res);
+	printf("c: '%c'\n", res);
+}	
+
 int main(int argc, Str* argv) {
 	while (1) {
 		Str line = readline("<< ");
@@ -100,7 +149,7 @@ int main(int argc, Str* argv) {
 			Str expr = line;
 			Num res = readExpr(&expr, 0);
 			ans = res;
-			printf("> %.15g\n", res);
+			display_result(res);
 		when(1):;
 			printf("! Error: expected value (number, a) or prefix operator (");
 			OpDef* op;
